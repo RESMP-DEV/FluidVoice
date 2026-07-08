@@ -213,6 +213,9 @@ scratch/
 assets/
 .swiftpm/
 scripts/
+# Exception: FluidVoiceTrain's scripts ARE tracked (build_bundle.sh, build_with_training.sh).
+!FluidVoiceTrain/scripts/
+!FluidVoiceTrain/scripts/**
 
 # Benchmark / eval reports (local-only)
 benchmark_reports/
@@ -223,3 +226,20 @@ sample/
 .codex
 AGENTS.md
 builds/
+
+# FluidVoiceTrain — on-device training component.
+# The Python SOURCE is tracked (fluidvoice_finetune/, tests/, pyproject.toml,
+# scripts/, README.md). The BUILT BUNDLE (mlx-lm + torch + llama.cpp binaries,
+# ~2-3 GB) is a release artifact produced by scripts/build_bundle.sh and is
+# never committed — it's copied into the .app's Resources at release build time.
+FluidVoiceTrain/.venv/
+FluidVoiceTrain/dist/
+FluidVoiceTrain/build/
+FluidVoiceTrain/output/
+FluidVoiceTrain/prepared/
+FluidVoiceTrain/**/__pycache__/
+FluidVoiceTrain/**/*.pyc
+FluidVoiceTrain/**/.pytest_cache/
+FluidVoiceTrain/**/.ruff_cache/
+FluidVoiceTrain/**/*.egg-info/
+FluidVoiceTrain/.python-version

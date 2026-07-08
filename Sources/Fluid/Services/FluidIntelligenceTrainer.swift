@@ -36,10 +36,65 @@ final class FluidIntelligenceTrainer: ObservableObject {
 
     // MARK: - Public API
 
-    /// Whether the trainer is *configured* (consent + venv path present).
+    /// Whether the trainer is *configured*: collection consent is on AND the
+    /// bundled trainer is discoverable. No user-facing path setting — the
+    /// bundle is auto-discovered from the .app's Resources (release) or the
+    /// repo's FluidVoiceTrain/dist (dev builds).
     var isConfigured: Bool {
         SettingsStore.shared.allowFluidIntelligenceTrainingCollection
-            && (SettingsStore.shared.fluidIntelligenceTrainerVenvPath?.isEmpty == false)
+            && Self.bundledTrainerDirectory() != nil
+    }
+
+    /// Resolve the bundled FluidVoiceTrain directory, or nil if absent.
+    ///
+    /// Precedence:
+    ///   1. Release: ``<FluidVoice.app>/Contents/Resources/FluidVoiceTrain``
+    ///      (copied in by the release build).
+    ///   2. Dev/source build: ``<repo>/FluidVoiceTrain/dist/FluidVoiceTrain``
+    ///      (the output of FluidVoiceTrain/scripts/build_bundle.sh), located
+    ///      via the Swift source tree so an unsigned dev build still finds a
+    ///      locally-built bundle without a venv-path setting.
+    static func bundledTrainerDirectory() -> URL? {
+        let fm = FileManager.default
+
+        // 1. Release: inside the app bundle's Resources.
+        let releaseURL = Bundle.main.bundleURL
+            .appendingPathComponent("Contents", isDirectory: true)
+            .appendingPathComponent("Resources", isDirectory: true)
+            .appendingPathComponent("FluidVoiceTrain", isDirectory: true)
+        let releaseBin = releaseURL.appendingPathComponent("bin", isDirectory: true)
+            .appendingPathComponent("fluidvoice-finetune")
+        if fm.fileExists(atPath: releaseBin.path) {
+            return releaseURL
+        }
+
+        // 2. Dev: <repo>/FluidVoiceTrain/dist/FluidVoiceTrain. Resolve the repo
+        //    root by walking up from this source file at build time.
+        let devURL = Self.devBundleDirectory()
+        let devBin = devURL.appendingPathComponent("bin", isDirectory: true)
+            .appendingPathComponent("fluidvoice-finetune")
+        if fm.fileExists(atPath: devBin.path) {
+            return devURL
+        }
+
+        return nil
+    }
+
+    /// Locate the dev-build bundle via `#file`-relative path resolution. In a
+    /// compiled app `#file` may be flattened, so this is best-effort and only
+    /// used when the release bundle isn't present (i.e., a dev build).
+    private static func devBundleDirectory() -> URL {
+        let file = URL(fileURLWithPath: #file)
+        // Sources/Fluid/Services/FluidIntelligenceTrainer.swift -> walk up 4 to repo root.
+        let repoRoot = file
+            .deletingLastPathComponent() // Services
+            .deletingLastPathComponent() // Fluid
+            .deletingLastPathComponent() // Sources
+            .deletingLastPathComponent() // repo root
+        return repoRoot
+            .appendingPathComponent("FluidVoiceTrain", isDirectory: true)
+            .appendingPathComponent("dist", isDirectory: true)
+            .appendingPathComponent("FluidVoiceTrain", isDirectory: true)
     }
 
     /// The corpus entry count, refreshed by re-exporting. Cheap to call.
@@ -147,14 +202,17 @@ final class FluidIntelligenceTrainer: ObservableObject {
     // MARK: - Internals
 
     private func invokeTrainer(corpusURL: URL, exported: Int) async throws {
-        guard let venvPath = SettingsStore.shared.fluidIntelligenceTrainerVenvPath,
-              !venvPath.isEmpty else { return }
+        guard let bundleDir = Self.bundledTrainerDirectory() else {
+            self.lastRunSummary = "Trainer bundle not found."
+            self.lastRunDate = Date()
+            return
+        }
 
-        let entrypoint = "\(venvPath)/bin/fluidvoice-finetune"
+        let entrypoint = bundleDir.appendingPathComponent("bin", isDirectory: false)
+            .appendingPathComponent("fluidvoice-finetune").path
         let checkpointDir = TrainingCorpusExporter.checkpointRoot.path
         // Wrap in caffeinate -is -w <pid> to hold off idle+system sleep.
         let trainCmd = "'\(entrypoint)' idle-train --corpus '\(corpusURL.path)' --checkpoint-dir '\(checkpointDir)'"
-        let wrapper = "bash -c '\(trainCmd) & caffeinate -is -w $!'"
 
         self.isRunning = true
         defer { isRunning = false }
@@ -190,7 +248,6 @@ final class FluidIntelligenceTrainer: ObservableObject {
         } else {
             self.lastRunSummary = "Trainer exited \(status): \(stderr.prefix(200))"
         }
-        _ = wrapper // documented intent; the actual wrapper is in proc.arguments
     }
 
     // MARK: - Power/idle shell-outs

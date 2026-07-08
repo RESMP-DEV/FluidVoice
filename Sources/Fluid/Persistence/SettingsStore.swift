@@ -388,7 +388,9 @@ final class SettingsStore: ObservableObject {
     }
 
     func dictationPromptSelection(for slot: DictationShortcutSlot) -> DictationPromptSelection {
-        if self.isDictationPromptOff(for: slot) { return .off }
+        if self.isDictationPromptOff(for: slot) {
+            return .off
+        }
         if let promptID = self.selectedDictationPromptID(for: slot) {
             if promptID == PrivateAIProviderPromptFormat.promptSelectionID {
                 return PrivateAIProviderPromptFormat.isAvailable(settings: self) ? .privateAI : .default
@@ -544,7 +546,10 @@ final class SettingsStore: ObservableObject {
         switch mode.normalized {
         case .dictate:
             if self.selectedDictationPromptID == PrivateAIProviderPromptFormat.promptSelectionID,
-               !PrivateAIProviderPromptFormat.isAvailable(settings: self) { return nil }
+               !PrivateAIProviderPromptFormat.isAvailable(settings: self)
+            {
+                return nil
+            }
             return self.selectedDictationPromptID
         case .edit:
             return self.selectedEditPromptID
@@ -1177,7 +1182,9 @@ final class SettingsStore: ObservableObject {
             return promptText.replacingOccurrences(of: self.transcriptPlaceholder, with: transcript)
         }
         let trimmedPrompt = promptText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmedPrompt.isEmpty { return transcript }
+        if trimmedPrompt.isEmpty {
+            return transcript
+        }
         return promptText + "\n\n" + transcript
     }
 
@@ -1294,7 +1301,9 @@ final class SettingsStore: ObservableObject {
     var showMainWindowAtLoginLaunch: Bool {
         get {
             let value = self.defaults.object(forKey: Keys.showMainWindowAtLoginLaunch)
-            if value == nil { return true }
+            if value == nil {
+                return true
+            }
             return self.defaults.bool(forKey: Keys.showMainWindowAtLoginLaunch)
         }
         set {
@@ -1308,7 +1317,9 @@ final class SettingsStore: ObservableObject {
     var shareAnonymousAnalytics: Bool {
         get {
             let value = self.defaults.object(forKey: Keys.shareAnonymousAnalytics)
-            if value == nil { return true }
+            if value == nil {
+                return true
+            }
             return self.defaults.bool(forKey: Keys.shareAnonymousAnalytics)
         }
         set {
@@ -1344,7 +1355,9 @@ final class SettingsStore: ObservableObject {
     var enableDebugLogs: Bool {
         get {
             let value = self.defaults.object(forKey: Keys.enableDebugLogs)
-            if value == nil { return true }
+            if value == nil {
+                return true
+            }
             return self.defaults.bool(forKey: Keys.enableDebugLogs)
         }
         set {
@@ -1400,7 +1413,9 @@ final class SettingsStore: ObservableObject {
     func getAPIKey(for providerID: String) -> String? {
         let keys = self.providerAPIKeys
         // Try exact match first
-        if let key = keys[providerID] { return key }
+        if let key = keys[providerID] {
+            return key
+        }
 
         // Try canonical key format (custom:ID)
         let canonical = self.canonicalProviderKey(for: providerID)
@@ -1466,7 +1481,8 @@ final class SettingsStore: ObservableObject {
     var selectedFluidIntelligenceVariant: FluidIntelligenceModelVariant {
         get {
             guard let raw = self.defaults.string(forKey: Keys.selectedFluidIntelligenceVariant),
-                  let variant = FluidIntelligenceModelVariant(rawValue: raw) else {
+                  let variant = FluidIntelligenceModelVariant(rawValue: raw)
+            else {
                 return .e2b
             }
             return variant
@@ -1495,7 +1511,9 @@ final class SettingsStore: ObservableObject {
         set {
             objectWillChange.send()
             let sanitized = newValue.map { provider -> SavedProvider in
-                if provider.apiKey.isEmpty { return provider }
+                if provider.apiKey.isEmpty {
+                    return provider
+                }
                 return SavedProvider(
                     id: provider.id,
                     name: provider.name,
@@ -1515,7 +1533,9 @@ final class SettingsStore: ObservableObject {
         let providerID = self.selectedProviderID
 
         // 1. Apple Intelligence is always considered configured
-        if providerID == "apple-intelligence" { return true }
+        if providerID == "apple-intelligence" {
+            return true
+        }
 
         // 2. Get base URL to check for local endpoints
         var baseURL = ""
@@ -2339,17 +2359,29 @@ final class SettingsStore: ObservableObject {
     }
 
     private func hasLegacyUsageSignals() -> Bool {
-        if self.defaults.object(forKey: Keys.playgroundUsed) != nil { return true }
-        if self.defaults.object(forKey: Keys.hotkeyShortcutKey) != nil { return true }
-        if self.defaults.object(forKey: Keys.primaryDictationShortcutsKey) != nil { return true }
+        if self.defaults.object(forKey: Keys.playgroundUsed) != nil {
+            return true
+        }
+        if self.defaults.object(forKey: Keys.hotkeyShortcutKey) != nil {
+            return true
+        }
+        if self.defaults.object(forKey: Keys.primaryDictationShortcutsKey) != nil {
+            return true
+        }
         if let rawSpeechModel = self.defaults.string(forKey: Keys.selectedSpeechModel),
            rawSpeechModel != SpeechModel.defaultModel.rawValue
         {
             return true
         }
-        if self.defaults.object(forKey: Keys.selectedProviderID) != nil { return true }
-        if self.defaults.object(forKey: Keys.customDictionaryEntries) != nil { return true }
-        if !self.savedProviders.isEmpty { return true }
+        if self.defaults.object(forKey: Keys.selectedProviderID) != nil {
+            return true
+        }
+        if self.defaults.object(forKey: Keys.customDictionaryEntries) != nil {
+            return true
+        }
+        if !self.savedProviders.isEmpty {
+            return true
+        }
         return false
     }
 
@@ -2689,7 +2721,9 @@ final class SettingsStore: ObservableObject {
     /// Covers reasoning models plus Anthropic models that have deprecated temperature
     /// (Opus 4.7+, Sonnet 5, Fable/Mythos 5 — Sonnet 4.6 and older still accept it).
     func isTemperatureUnsupported(_ model: String) -> Bool {
-        if self.isReasoningModel(model) { return true }
+        if self.isReasoningModel(model) {
+            return true
+        }
         // Normalize version separators so dotted IDs (e.g. OpenRouter's
         // anthropic/claude-opus-4.8) match the hyphenated forms below.
         let modelLower = model.lowercased().replacingOccurrences(of: ".", with: "-")
@@ -2816,18 +2850,6 @@ final class SettingsStore: ObservableObject {
             if newValue && !self.saveAudioWithTranscriptionHistory {
                 self.saveAudioWithTranscriptionHistory = true
             }
-        }
-    }
-
-    /// Path to a Python venv containing the ``fluidvoice-finetune`` entrypoint,
-    /// used by the on-device idle trainer. nil = not configured (trainer no-ops).
-    var fluidIntelligenceTrainerVenvPath: String? {
-        get {
-            self.defaults.string(forKey: Keys.fluidIntelligenceTrainerVenvPath)
-        }
-        set {
-            objectWillChange.send()
-            self.defaults.set(newValue, forKey: Keys.fluidIntelligenceTrainerVenvPath)
         }
     }
 
@@ -3518,7 +3540,9 @@ final class SettingsStore: ObservableObject {
         let trimmed = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !trimmed.isEmpty else { return "" }
         let providerID = trimmed
-        if ModelRepository.shared.isBuiltIn(providerID) { return providerID }
+        if ModelRepository.shared.isBuiltIn(providerID) {
+            return providerID
+        }
         if PrivateFeatures.privateAIProvider,
            providerID == PrivateAIProviderFeature.shared.providerID
         {
@@ -4585,7 +4609,6 @@ private extension SettingsStore {
         static let saveTranscriptionHistory = "SaveTranscriptionHistory"
         static let saveAudioWithTranscriptionHistory = "SaveAudioWithTranscriptionHistory"
         static let allowFluidIntelligenceTrainingCollection = "FluidIntelligenceTrainingCollectionEnabled"
-        static let fluidIntelligenceTrainerVenvPath = "FluidIntelligenceTrainerVenvPath"
         static let audioHistoryBudgetGB = "AudioHistoryBudgetGB"
         static let notifyAIProcessingFailures = "NotifyAIProcessingFailures"
 

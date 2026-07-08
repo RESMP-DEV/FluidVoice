@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fluidvoice-finetune"
+version = "0.1.0"
+description = "Unified SFT/LoRA fine-tuning pipeline for FluidVoice: Gemma-3n (Fluid Intelligence) and Parakeet ASR."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.1",
+    "huggingface_hub>=0.20",
+    "datasets>=2.18",
+    "pyyaml>=6.0",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+# Gemma on Apple Silicon (local). mlx-lm pulls mlx.
+gemma-mlx = ["mlx-lm>=0.19", "mlx>=0.19"]
+# Gemma on CUDA host (remote). bitsandbytes is x86_64-CUDA only.
+gemma-cuda = [
+    "transformers>=4.44",
+    "peft>=0.11",
+    "accelerate>=0.30",
+    "trl>=0.9",
+    "bitsandbytes>=0.43",
+    "torch>=2.2",
+]
+# Parakeet ASR fine-tuning + CoreML re-export (remote CUDA host).
+parakeet = [
+    "nemo_toolkit[asr]>=1.23",
+    "onnx>=1.16",
+    "coremltools>=7.1",
+    "torch>=2.2",
+]
+# On-device idle-time Gemma training (Apple Silicon). Convenience alias pulling
+# in mlx-lm (>=0.25 for gemma3n support) + mlx + pyyaml. Also needs:
+#   - torch (for llama.cpp's convert_hf_to_gguf.py) — install via the [gguf] extra
+#   - a llama.cpp checkout (set LLAMA_CPP_DIR) with build/bin/llama-quantize + convert_hf_to_gguf.py
+idle = ["mlx-lm>=0.25", "mlx>=0.19", "pyyaml>=6.0"]
+# torch for llama.cpp's convert_hf_to_gguf.py (the HF→GGUF converter needs it).
+# CPU-only is sufficient on Mac (the converter doesn't use GPU).
+gguf = ["torch>=2.1"]
+# Convenience: everything needed for the on-device idle trainer (mlx + gguf).
+# Used by scripts/build_bundle.sh to produce a relocatable bundle for embedding
+# in FluidVoice.app so end users don't need Python.
+on-device = ["fluidvoice-finetune[idle,gguf]"]
+dev = ["pytest>=7.4", "pytest-cov>=4.1", "ruff>=0.5"]
+
+[project.scripts]
+fluidvoice-finetune = "fluidvoice_finetune.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["fluidvoice_finetune*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

@@ -31,19 +31,6 @@ extension SettingsView {
             .font(self.theme.typography.bodySmall)
             .foregroundStyle(self.settingsSecondaryText)
 
-            // venv path configuration (required for the trainer to run).
-            HStack(spacing: 8) {
-                Text("Python venv")
-                    .font(self.theme.typography.bodySmall)
-                    .frame(width: 110, alignment: .leading)
-                TextField("/path/to/venv", text: Binding(
-                    get: { SettingsStore.shared.fluidIntelligenceTrainerVenvPath ?? "" },
-                    set: { SettingsStore.shared.fluidIntelligenceTrainerVenvPath = $0.isEmpty ? nil : $0 }
-                ))
-                .textFieldStyle(.roundedBorder)
-                .controlSize(.small)
-            }
-
             HStack(spacing: 8) {
                 Button("Train Now") {
                     Task { @MainActor in
@@ -61,7 +48,7 @@ extension SettingsView {
             .padding(.top, 2)
 
             if !FluidIntelligenceTrainer.shared.isConfigured {
-                Text("Configure a Python venv with the `fluidvoice-finetune` package to enable training.")
+                Text("On-device training is included with the Fluid Intelligence build. Nothing to configure.")
                     .font(self.theme.typography.caption)
                     .foregroundStyle(self.settingsSecondaryText)
             }
