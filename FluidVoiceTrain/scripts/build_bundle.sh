@@ -58,7 +58,7 @@ mkdir -p "$BUNDLE_DIR/bin"
 
 # 1. Create a relocatable venv with all deps (idle + gguf extras).
 echo "[1/4] Creating relocatable venv..."
-uv venv "$BUNDLE_DIR" --python 3.11
+uv venv "$BUNDLE_DIR" --python 3.11 --clear
 # Install the package + the heavy extras into the bundle's own site-packages.
 uv pip install --python "$BUNDLE_DIR/bin/python" \
     -e "$PROJECT_DIR[idle,gguf]"
