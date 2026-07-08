@@ -59,7 +59,8 @@ final class DictationPostProcessingService {
                     localModelPath: PrivateAIIntegrationService.configuredLocalModelPath,
                     usesStablePromptPrefixKVCache: settings.privateAIPrefixKVCacheEnabled,
                     usesFluid1Boost: settings.privateAIBoostEnabled,
-                    contextTokenLimit: settings.privateAIContextTokenLimit
+                    contextTokenLimit: settings.privateAIContextTokenLimit,
+                    modelVariant: settings.selectedFluidIntelligenceVariant
                 ),
                 context: PrivateAIIntegrationService.AppContext(
                     appName: "",

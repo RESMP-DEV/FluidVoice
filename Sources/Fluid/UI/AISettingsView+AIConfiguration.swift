@@ -696,6 +696,7 @@ extension AIEnhancementSettingsView {
 
             self.privateAIPrefixCacheRow(isBusy: isBusy)
             self.privateAIBoostRow(isBusy: isBusy)
+            self.privateAIModelVariantRow(isBusy: isBusy)
 
             if self.viewModel.connectionStatus(for: PrivateAIProviderFeature.shared.providerID) == .failed,
                !self.viewModel.connectionErrorMessage.isEmpty
@@ -798,6 +799,36 @@ extension AIEnhancementSettingsView {
         }
     }
 
+    /// E2B vs E4B model variant picker. Lives behind the same
+    /// `PrivateFeatures.privateAIProvider` gate as the rest of the Fluid
+    /// Intelligence section: in the public OSS build this row is never reached
+    /// because the enclosing section is hidden.
+    private func privateAIModelVariantRow(isBusy: Bool) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text("Model")
+                .font(.caption)
+                .frame(width: 124, alignment: .leading)
+
+            Picker("", selection: self.privateAIModelVariantBinding) {
+                ForEach(FluidIntelligenceModelVariant.allCases) { variant in
+                    Text(variant.displayName).tag(variant)
+                }
+            }
+            .pickerStyle(.radioGroup)
+            .controlSize(.mini)
+            .labelsHidden()
+            .disabled(isBusy)
+            .accessibilityLabel("Fluid Intelligence model variant")
+
+            Text(self.settings.selectedFluidIntelligenceVariant.detail)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+
+            Spacer(minLength: 0)
+        }
+    }
+
     private func privateAIModelStatusRow(
         status: PrivateAIProviderModelStatus,
         progress: PrivateAIModelDownloadProgress?,
@@ -874,6 +905,26 @@ extension AIEnhancementSettingsView {
                 Task { @MainActor in
                     await PrivateAIIntegrationService.shared.unloadCachedRuntime(
                         reason: enabled ? "Fluid-1 Boost enabled" : "Fluid-1 Boost disabled"
+                    )
+                    self.viewModel.refreshProviderItems()
+                }
+            }
+        )
+    }
+
+    /// Two-way binding for the Fluid Intelligence model variant (E2B vs E4B).
+    /// Changing the variant unloads the cached runtime so the next dictation
+    /// loads the newly selected GGUF, mirroring the boost / prefix-cache rows.
+    private var privateAIModelVariantBinding: Binding<FluidIntelligenceModelVariant> {
+        Binding(
+            get: { self.settings.selectedFluidIntelligenceVariant },
+            set: { variant in
+                guard self.settings.selectedFluidIntelligenceVariant != variant else { return }
+                self.settings.selectedFluidIntelligenceVariant = variant
+                self.privateAILoadState = .idle
+                Task { @MainActor in
+                    await PrivateAIIntegrationService.shared.unloadCachedRuntime(
+                        reason: "Fluid Intelligence variant changed to \(variant.rawValue)"
                     )
                     self.viewModel.refreshProviderItems()
                 }
@@ -2022,6 +2073,7 @@ extension AIEnhancementSettingsView {
 
                 self.privateAIPrefixCacheRow(isBusy: isBusy)
                 self.privateAIBoostRow(isBusy: isBusy)
+                self.privateAIModelVariantRow(isBusy: isBusy)
             }
 
             HStack(spacing: 8) {

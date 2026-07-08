@@ -1457,6 +1457,26 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    /// User-selected Fluid Intelligence model variant (E2B vs E4B). Persisted so
+    /// the choice survives restarts and can be read by the private
+    /// `PrivateAIProviderBridge` when resolving which GGUF to load. Defaults to
+    /// `.e2b` to preserve pre-toggle behavior. Inert in the public OSS build
+    /// (the bridge isn't linked); only becomes effective when Fluid Intelligence
+    /// is available.
+    var selectedFluidIntelligenceVariant: FluidIntelligenceModelVariant {
+        get {
+            guard let raw = self.defaults.string(forKey: Keys.selectedFluidIntelligenceVariant),
+                  let variant = FluidIntelligenceModelVariant(rawValue: raw) else {
+                return .e2b
+            }
+            return variant
+        }
+        set {
+            objectWillChange.send()
+            self.defaults.set(newValue.rawValue, forKey: Keys.selectedFluidIntelligenceVariant)
+        }
+    }
+
     private func migratePrivateAIContextDefaultTo4KIfNeeded() {
         guard self.defaults.bool(forKey: Keys.privateAIContextDefaultMigratedTo4K) == false else { return }
         let storedValue = self.defaults.object(forKey: Keys.privateAIContextTokenLimit) as? Int
@@ -2772,6 +2792,42 @@ final class SettingsStore: ObservableObject {
         set {
             objectWillChange.send()
             self.defaults.set(newValue, forKey: Keys.saveAudioWithTranscriptionHistory)
+        }
+    }
+
+    /// User consent to collect Fluid Intelligence training data locally.
+    ///
+    /// When ON, FluidVoice saves dictation audio + transcripts into a local
+    /// corpus at ``~/Library/Application Support/FluidVoice/FluidIntelligenceTraining/``
+    /// so the on-device idle trainer can fine-tune a personal Fluid Intelligence
+    /// model. Enabling this also forces ``saveAudioWithTranscriptionHistory`` on
+    /// (audio is required to build the corpus). Nothing leaves the device until
+    /// the user explicitly uploads via the trainer.
+    ///
+    /// Off by default — this is sensitive, content-bearing data and must be opt-in.
+    var allowFluidIntelligenceTrainingCollection: Bool {
+        get {
+            self.defaults.object(forKey: Keys.allowFluidIntelligenceTrainingCollection) as? Bool ?? false
+        }
+        set {
+            objectWillChange.send()
+            self.defaults.set(newValue, forKey: Keys.allowFluidIntelligenceTrainingCollection)
+            // Collection requires audio capture; force it on/off in lockstep.
+            if newValue && !self.saveAudioWithTranscriptionHistory {
+                self.saveAudioWithTranscriptionHistory = true
+            }
+        }
+    }
+
+    /// Path to a Python venv containing the ``fluidvoice-finetune`` entrypoint,
+    /// used by the on-device idle trainer. nil = not configured (trainer no-ops).
+    var fluidIntelligenceTrainerVenvPath: String? {
+        get {
+            self.defaults.string(forKey: Keys.fluidIntelligenceTrainerVenvPath)
+        }
+        set {
+            objectWillChange.send()
+            self.defaults.set(newValue, forKey: Keys.fluidIntelligenceTrainerVenvPath)
         }
     }
 
@@ -4450,6 +4506,7 @@ private extension SettingsStore {
         static let privateAIBoostEnabled = "PrivateAIProviderBoostEnabled"
         static let privateAIContextTokenLimit = "PrivateAIProviderContextTokenLimit"
         static let privateAIContextDefaultMigratedTo4K = "PrivateAIProviderContextDefaultMigratedTo4K"
+        static let selectedFluidIntelligenceVariant = "FluidIntelligenceSelectedVariant"
         static let providerAPIKeys = "ProviderAPIKeys"
         static let providerAPIKeyIdentifiers = "ProviderAPIKeyIdentifiers"
         static let savedProviders = "SavedProviders"
@@ -4527,6 +4584,8 @@ private extension SettingsStore {
         static let userTypingWPM = "UserTypingWPM"
         static let saveTranscriptionHistory = "SaveTranscriptionHistory"
         static let saveAudioWithTranscriptionHistory = "SaveAudioWithTranscriptionHistory"
+        static let allowFluidIntelligenceTrainingCollection = "FluidIntelligenceTrainingCollectionEnabled"
+        static let fluidIntelligenceTrainerVenvPath = "FluidIntelligenceTrainerVenvPath"
         static let audioHistoryBudgetGB = "AudioHistoryBudgetGB"
         static let notifyAIProcessingFailures = "NotifyAIProcessingFailures"
 

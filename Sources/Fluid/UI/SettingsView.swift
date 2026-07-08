@@ -25,7 +25,10 @@ struct SettingsView: View {
     }
 
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.theme) private var theme
+    // Internal so the cross-file extension (FluidIntelligenceTrainingSettingsSection)
+    // can read the theme. Keeping it non-private is the standard pattern for
+    // shared view presentation helpers within the same target.
+    @Environment(\.theme) var theme
     @ObservedObject private var settings = SettingsStore.shared
     @Binding var appear: Bool
     @Binding var visualizerNoiseThreshold: Double
@@ -78,11 +81,11 @@ struct SettingsView: View {
         self.activeShortcutRecordingTarget != nil
     }
 
-    private var settingsTitleText: Color {
+    var settingsTitleText: Color {
         Color(nsColor: .labelColor)
     }
 
-    private var settingsSecondaryText: Color {
+    var settingsSecondaryText: Color {
         self.colorScheme == .light ? Color(nsColor: .labelColor).opacity(0.90) : self.theme.palette.primaryText.opacity(0.82)
     }
 
@@ -898,6 +901,24 @@ struct SettingsView: View {
                                     } else {
                                         Divider().opacity(0.2)
                                     }
+
+                                    // MARK: - Fluid Intelligence training data collection
+                                    self.optionToggleRow(
+                                        title: "Fluid Intelligence Training Data",
+                                        description: "Save audio + transcripts locally to train a personal Fluid Intelligence model on this Mac while idle. Nothing leaves your device until you upload it.",
+                                        isOn: Binding(
+                                            get: { SettingsStore.shared.allowFluidIntelligenceTrainingCollection },
+                                            set: {
+                                                SettingsStore.shared.allowFluidIntelligenceTrainingCollection = $0
+                                                if $0 { FluidIntelligenceTrainer.shared.refreshCorpusCount() }
+                                            }
+                                        )
+                                    )
+
+                                    if SettingsStore.shared.allowFluidIntelligenceTrainingCollection {
+                                        self.fluidIntelligenceTrainingSection()
+                                    }
+                                    Divider().opacity(0.2)
 
                                     self.optionToggleRow(
                                         title: "Notify AI Enhancement Failures",

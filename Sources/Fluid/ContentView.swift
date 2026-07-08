@@ -1848,7 +1848,8 @@ struct ContentView: View {
                     localModelPath: PrivateAIIntegrationService.configuredLocalModelPath,
                     usesStablePromptPrefixKVCache: SettingsStore.shared.privateAIPrefixKVCacheEnabled,
                     usesFluid1Boost: SettingsStore.shared.privateAIBoostEnabled,
-                    contextTokenLimit: SettingsStore.shared.privateAIContextTokenLimit
+                    contextTokenLimit: SettingsStore.shared.privateAIContextTokenLimit,
+                    modelVariant: SettingsStore.shared.selectedFluidIntelligenceVariant
                 ),
                 context: PrivateAIIntegrationService.AppContext(
                     appName: appInfo.name,
@@ -2357,9 +2358,11 @@ struct ContentView: View {
         let frontmostName = frontmostApp?.localizedName ?? "Unknown"
         let isFluidFrontmost = frontmostApp?.bundleIdentifier == Bundle.main.bundleIdentifier
 
-        // Save to transcription history (transcription mode only, if enabled)
+        // Save to transcription history (transcription mode only, if enabled).
+        // `historyEntryID` is generated unconditionally so it can also key the
+        // correction-capture observation below (and the audio attach above).
+        let historyEntryID = UUID()
         if shouldPersistOutputs, SettingsStore.shared.saveTranscriptionHistory {
-            let historyEntryID = UUID()
             let historyTimestamp = Date()
             TranscriptionHistoryStore.shared.addEntry(
                 id: historyEntryID,
@@ -2444,6 +2447,19 @@ struct ContentView: View {
                 aiUsed: shouldUseAI,
                 aiModel: modelInfo.model,
                 aiProvider: modelInfo.provider
+            )
+            // Under training-data consent, also observe the typed text so we can
+            // capture the user's manual correction (the richest training signal).
+            // CorrectionCaptureService no-ops unless collection is enabled. We
+            // re-resolve the target PID here (cheap cached lookup) since the
+            // typing block's `typingTarget` is out of scope.
+            let windowSeconds = AnalyticsBuckets.windowSecondsForWordBucket(wordsBucket)
+            let observationPID = self.resolveTypingTargetPID().pid ?? -1
+            await CorrectionCaptureService.shared.registerTyped(
+                entryID: historyEntryID,
+                typedText: finalText,
+                appPID: observationPID,
+                windowSeconds: windowSeconds
             )
         } else if shouldPersistOutputs,
                   SettingsStore.shared.copyTranscriptionToClipboard == false,

@@ -9,6 +9,51 @@ struct PrivateAIModelArtifact: Sendable, Codable, Hashable {
     var version: String?
 }
 
+/// Fluid Intelligence on-device enhancement model variant.
+///
+/// `fluid-1` is a modified Gemma derivative shipped as a Q4_K_M GGUF at
+/// `altic-dev/FluidIntelligence`. The `e2b` variant (from `google/gemma-3n-e2b`)
+/// is the current default; `e4b` (from `google/gemma-3n-e4b`) is a larger, higher
+/// quality alternative produced by the `fluidvoice-finetune` pipeline.
+///
+/// The variant only selects *which* GGUF artifact the runtime loads — both are
+/// loaded by the same private `PrivateAIProviderBridge`. The artifact literals
+/// (download URL / SHA-256 / byte count) for each variant live in that private
+/// package; the public OSS build resolves neither. See the seam contract on
+/// `PrivateAIProviderFeatureProviding`.
+enum FluidIntelligenceModelVariant: String, CaseIterable, Identifiable, Sendable, Codable, Hashable {
+    /// Smaller / faster Gemma-3n-E2B derivative. Current default; preserves
+    /// pre-toggle behavior (`fluid-1-q4_k_m.gguf`).
+    case e2b = "fluid-1-e2b"
+    /// Larger / higher-quality Gemma-3n-E4B derivative. New in this change set;
+    /// produced by the external `fluidvoice-finetune` pipeline as
+    /// `models/fluid-1-e4b-q4_k_m.gguf` and uploaded to `altic-dev/FluidIntelligence`.
+    case e4b = "fluid-1-e4b"
+
+    var id: String { self.rawValue }
+
+    /// Human-readable label for the settings picker.
+    var displayName: String {
+        switch self {
+        case .e2b: return "E2B (faster, smaller)"
+        case .e4b: return "E4B (higher quality)"
+        }
+    }
+
+    /// One-line description shown under the picker option.
+    var detail: String {
+        switch self {
+        case .e2b: return "Gemma-3n-E2B derivative · ~3.4 GB · Q4_K_M GGUF"
+        case .e4b: return "Gemma-3n-E4B derivative · larger · Q4_K_M GGUF"
+        }
+    }
+
+    /// GGUF filename the runtime loads. Must match the artifact produced by
+    /// `fluidvoice-finetune` (see `gemma/export_gguf.py`) and the file listed on
+    /// the `altic-dev/FluidIntelligence` model card.
+    var artifactFilename: String { "\(self.rawValue)-q4_k_m.gguf" }
+}
+
 struct PrivateAIModelDownloadProgress: Sendable, Equatable {
     var bytesWritten: Int64
     var totalBytesWritten: Int64
@@ -156,6 +201,22 @@ struct PrivateAIUnavailableError: LocalizedError {
     }
 }
 
+/// Contract for the Fluid Intelligence ("Private AI") provider.
+///
+/// - Important: **Bridge integration seam.** In the public OSS build the
+///   `UnavailablePrivateAIProviderFeature` stub is installed: `isAvailable == false`
+///   and the registry is empty, so the UI gates Fluid Intelligence off entirely
+///   (see `PrivateFeatures.privateAIProvider`). The real implementation is
+///   installed by `PrivateAIProviderBridge.install()` under
+///   `#if PRIVATE_AI_PROVIDER` (a flag absent from the committed `project.pbxproj`).
+///
+///   When linking the bridge, it MUST honor the selected Fluid Intelligence
+///   variant: each registered model's `artifact.filename` must equal
+///   `SettingsStore.shared.selectedFluidIntelligenceVariant.artifactFilename`
+///   for its variant (e.g. `fluid-1-e2b-q4_k_m.gguf` / `fluid-1-e4b-q4_k_m.gguf`),
+///   and the artifact's `downloadURL`/`sha256`/`byteCount` must resolve to the
+///   matching file under `altic-dev/FluidIntelligence`. The variant flows into
+///   the runtime via `PrivateAIIntegrationService.RuntimeConfiguration.modelVariant`.
 protocol PrivateAIProviderFeatureProviding: Sendable {
     var isAvailable: Bool { get }
     var providerID: String { get }

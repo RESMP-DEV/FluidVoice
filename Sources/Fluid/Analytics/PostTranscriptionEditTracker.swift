@@ -93,6 +93,10 @@ actor PostTranscriptionEditTracker {
             AnalyticsService.shared.capture(.postTranscriptionEdit, properties: properties)
         }
 
+        // Under training-data consent, kick off the AX re-read to capture the
+        // user's manually-corrected text. No-op when collection is disabled.
+        await CorrectionCaptureService.shared.handleEditDetected()
+
         // Single-fire per transcription window.
         self.active = nil
     }
@@ -100,15 +104,6 @@ actor PostTranscriptionEditTracker {
     // MARK: - Window mapping
 
     private static func xSeconds(forWordsBucket bucket: String) -> Int {
-        switch bucket {
-        case "0": return 0
-        case "1-5": return 2
-        case "6-20": return 3
-        case "21-50": return 5
-        case "51-100": return 8
-        case "101-300": return 12
-        case "301+": return 15
-        default: return 5
-        }
+        AnalyticsBuckets.windowSecondsForWordBucket(bucket)
     }
 }

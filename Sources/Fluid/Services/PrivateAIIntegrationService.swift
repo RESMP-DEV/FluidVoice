@@ -21,6 +21,36 @@ actor PrivateAIIntegrationService {
         let usesStablePromptPrefixKVCache: Bool
         let usesFluid1Boost: Bool
         let contextTokenLimit: Int
+        /// Which Fluid Intelligence GGUF variant the runtime should load.
+        /// Default `.e2b` preserves pre-toggle behavior. The bridge reads this
+        /// to select the artifact; the public stub ignores it.
+        var modelVariant: FluidIntelligenceModelVariant
+
+        /// Backwards-compatible memberwise initializer. Existing call sites that
+        /// don't pass `modelVariant` get `.e2b`.
+        init(
+            selectedProviderID: String,
+            providerKey: String,
+            baseURL: String,
+            model: String,
+            apiKey: String,
+            localModelPath: String?,
+            usesStablePromptPrefixKVCache: Bool,
+            usesFluid1Boost: Bool,
+            contextTokenLimit: Int,
+            modelVariant: FluidIntelligenceModelVariant = .e2b
+        ) {
+            self.selectedProviderID = selectedProviderID
+            self.providerKey = providerKey
+            self.baseURL = baseURL
+            self.model = model
+            self.apiKey = apiKey
+            self.localModelPath = localModelPath
+            self.usesStablePromptPrefixKVCache = usesStablePromptPrefixKVCache
+            self.usesFluid1Boost = usesFluid1Boost
+            self.contextTokenLimit = contextTokenLimit
+            self.modelVariant = modelVariant
+        }
     }
 
     struct AppContext: Sendable, Equatable {

@@ -42,4 +42,20 @@ enum AnalyticsBuckets {
         default: return "10s+"
         }
     }
+
+    /// The post-transcription edit-observation window (seconds) for a given
+    /// word-count bucket. Shared source of truth for ``PostTranscriptionEditTracker``
+    /// and ``CorrectionCaptureService`` so both use the same windowing.
+    nonisolated static func windowSecondsForWordBucket(_ bucket: String) -> Int {
+        switch bucket {
+        case "0": return 0
+        case "1-5": return 2
+        case "6-20": return 3
+        case "21-50": return 5
+        case "51-100": return 8
+        case "101-300": return 12
+        case "301+": return 15
+        default: return 5
+        }
+    }
 }
