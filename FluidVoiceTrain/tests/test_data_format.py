@@ -113,7 +113,7 @@ def test_prepare_dataset_messages_passthrough(messages_jsonl: Path, tmp_path: Pa
     )
     assert count == 2
     assert (out_dir / "train.jsonl").exists()
-    assert (out_dir / "val.jsonl").exists()
+    assert (out_dir / "valid.jsonl").exists()
 
 
 def test_prepare_dataset_nemo_manifest_passthrough(nemo_manifest_jsonl: Path, tmp_path: Path):
@@ -134,6 +134,6 @@ def test_prepare_dataset_splits_respect_val_split(raw_pairs_csv: Path, tmp_path:
         source_fmt=DatasetFormat.RAW, val_split=0.34, seed=42,  # ~1 of 3 in val
     )
     train_n = len((out_dir / "train.jsonl").read_text().strip().splitlines())
-    val_n = len((out_dir / "val.jsonl").read_text().strip().splitlines())
+    val_n = len((out_dir / "valid.jsonl").read_text().strip().splitlines())
     assert train_n + val_n == count
     assert val_n == 1

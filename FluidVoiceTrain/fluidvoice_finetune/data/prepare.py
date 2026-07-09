@@ -2,7 +2,7 @@
 
 The input dataset can be one of several shapes; :func:`prepare_dataset`
 normalizes it into the target backend's format (``messages`` for Gemma,
-``nemo-manifest`` for Parakeet) and writes ``train.jsonl`` + ``val.jsonl``.
+``nemo-manifest`` for Parakeet) and writes ``train.jsonl`` + ``valid.jsonl``.
 
 Recognized input shapes (auto-detected unless ``--dataset-format`` forces one):
 
@@ -125,7 +125,7 @@ def prepare_dataset(
     val_split: float = 0.05,
     seed: int = 42,
 ) -> int:
-    """Ingest ``dataset``, split, and write ``train.jsonl`` + ``val.jsonl``.
+    """Ingest ``dataset``, split, and write ``train.jsonl`` + ``valid.jsonl``.
 
     Returns total record count written (train + val).
     """
@@ -144,7 +144,7 @@ def prepare_dataset(
 
     out_dir.mkdir(parents=True, exist_ok=True)
     train_path = out_dir / "train.jsonl"
-    val_path = out_dir / "val.jsonl"
+    val_path = out_dir / "valid.jsonl"
 
     if target_fmt is DatasetFormat.NEMO_MANIFEST:
         write_manifest(train, train_path)
@@ -241,7 +241,7 @@ def prepare_aqua_corpus(
 
     out_dir.mkdir(parents=True, exist_ok=True)
     train_path = out_dir / "train.jsonl"
-    val_path = out_dir / "val.jsonl"
+    val_path = out_dir / "valid.jsonl"
 
     audio_hours = 0.0
     if target_fmt is DatasetFormat.NEMO_MANIFEST:

@@ -41,7 +41,7 @@ def test_prepare_command_runs_on_messages(messages_jsonl: Path, tmp_path: Path):
     ])
     assert result.exit_code == 0, result.output
     assert (out / "train.jsonl").exists()
-    assert (out / "val.jsonl").exists()
+    assert (out / "valid.jsonl").exists()
 
 
 def test_run_config_parakeet_rejects_mlx():
