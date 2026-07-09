@@ -79,6 +79,17 @@ def train(cfg: RunConfig, data_dir: Path | None = None) -> Path:
         tokenizer.pad_token = tokenizer.eos_token
 
     # --- LoRA config (Gemma 4 targets) ---
+    # Gemma 4 has two kinds of linear layers:
+    #   1. Plain nn.Linear (PEFT-compatible): self_attn.{q,k,v,o}_proj,
+    #      mlp.{gate,up,down}_proj — the language-model projections. These are
+    #      what we want to adapt.
+    #   2. Gemma4ClippableLinear wrappers (the per-layer-input / audio-vision
+    #      projections): q_proj.linear, ffw_layer_1.linear, etc. PEFT rejects
+    #      these ("Target module Gemma4ClippableLinear is not supported"), so we
+    #      must NOT target them.
+    # PEFT does suffix matching on target_modules, so "q_proj" alone would match
+    # BOTH "self_attn.q_proj" (good) and "...q_proj.linear" (rejected). We scope
+    # with the full "self_attn." / "mlp." prefix to match only the plain linears.
     peft_config = LoraConfig(
         r=g.lora_rank,
         lora_alpha=g.lora_alpha,
@@ -86,8 +97,8 @@ def train(cfg: RunConfig, data_dir: Path | None = None) -> Path:
         bias="none",
         task_type="CAUSAL_LM",
         target_modules=[
-            "q_proj", "k_proj", "v_proj", "o_proj",
-            "gate_proj", "up_proj", "down_proj",
+            "self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj",
+            "mlp.gate_proj", "mlp.up_proj", "mlp.down_proj",
         ],
     )
 
