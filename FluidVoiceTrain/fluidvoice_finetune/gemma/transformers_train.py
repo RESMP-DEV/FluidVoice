@@ -78,6 +78,26 @@ def train(cfg: RunConfig, data_dir: Path | None = None) -> Path:
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    # Gemma 4's tokenizer ships WITHOUT a chat_template (it lives in the
+    # multimodal Gemma4Processor, which has a heavy dep chain we don't need for
+    # text-only SFT). Set a standard Gemma chat template directly so SFTTrainer
+    # can format the messages-format dataset. This matches the Gemma family
+    # convention (<start_of_turn>role\n...<end_of_turn>) and is what the base
+    # model was trained against.
+    if tokenizer.chat_template is None:
+        tokenizer.chat_template = (
+            "{% for message in messages %}"
+            "{% if message['role'] == 'system' %}"
+            "{{ '<start_of_turn>system\n' + message['content'] + '<end_of_turn>\n' }}"
+            "{% elif message['role'] == 'user' %}"
+            "{{ '<start_of_turn>user\n' + message['content'] + '<end_of_turn>\n' }}"
+            "{% elif message['role'] == 'assistant' %}"
+            "{{ '<start_of_turn>model\n' + message['content'] + '<end_of_turn>\n' }}"
+            "{% endif %}"
+            "{% endfor %}"
+            "{% if add_generation_prompt %}{{ '<start_of_turn>model\n' }}{% endif %}"
+        )
+
     # --- LoRA config (Gemma 4 targets) ---
     # Gemma 4 is multimodal: the language model projections are plain nn.Linear
     # (PEFT-compatible), but the vision/audio towers wrap their projections in
