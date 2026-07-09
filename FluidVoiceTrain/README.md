@@ -138,6 +138,38 @@ fluidvoice-finetune publish \
 | Gemma | `cuda` | NVIDIA GPU | transformers + PEFT + TRL (QLoRA) | Remote alternative. **P100 caveat:** Tesla P100 (Pascal) lacks bf16/fp8 and has limited `bitsandbytes` support — set `--learning-rate` conservatively and prefer fp16 base + LoRA over 4-bit QLoRA on that box. An Ampere+ GPU is recommended for 4-bit. |
 | Parakeet | `cuda` | NVIDIA GPU (Ampere+ recommended) | NVIDIA NeMo | CUDA-only; `--target mlx` is rejected. Exports to CoreML via NeMo → ONNX → `coremltools`. |
 
+## Gemma 4 Metal decode megakernel (E2B / E4B)
+
+`fluidvoice_finetune.gemma.megakernel` is a single-launch Metal kernel that
+runs every text transformer layer of a batch-1 decode step for the Fluid
+Intelligence bases (`google/gemma-4-E2B`, `google/gemma-4-E4B` and their
+mlx-community 4-bit exports). It is config-driven for both sizes:
+
+| | E2B | E4B |
+|---|---|---|
+| Hidden / layers | 1536 / 35 | 2560 / 42 |
+| Intermediate | 6144 (+ double-wide 12288 on shared-KV tail) | 10240 |
+| KV heads | 1 | 2 |
+| Layer pattern | 4 sliding + 1 global | 5 sliding + 1 global |
+| Shared-KV layers | last 20 | last 18 |
+
+Host still owns token embed, per-layer embedding projection, final norm, and
+the LM head. The kernel owns attention (sliding + global, GQA, partial RoPE),
+GeGLU MLP, PLE residual, and KV-cache write.
+
+```bash
+# against an MLX 4-bit checkpoint directory
+python -m fluidvoice_finetune.gemma.megakernel validate /path/to/gemma-4-e4b-it-4bit
+python -m fluidvoice_finetune.gemma.megakernel bench    /path/to/gemma-4-e4b-it-4bit
+python -m fluidvoice_finetune.gemma.megakernel qdot     # nibble-layout unit test
+```
+
+```python
+from fluidvoice_finetune.gemma.megakernel import MegakernelDecoder
+dec = MegakernelDecoder("/path/to/gemma-4-e2b-it-4bit")
+tok, logits = dec.step(2, 0)  # BOS
+```
+
 The FluidVoice Swift app loads both artifact types with compute units
 `.cpuAndNeuralEngine` on Apple Silicon.
 

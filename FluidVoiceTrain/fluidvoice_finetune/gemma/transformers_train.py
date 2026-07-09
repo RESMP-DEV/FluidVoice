@@ -93,10 +93,11 @@ def train(cfg: RunConfig, data_dir: Path | None = None) -> Path:
         lora_dropout=g.lora_dropout,
         bias="none",
         task_type="CAUSAL_LM",
-        target_modules=[
-            r"language_model\..*\.self_attn\.(q_proj|k_proj|v_proj|o_proj)",
-            r"language_model\..*\.mlp\.(gate_proj|up_proj|down_proj)",
-        ],
+        # Single regex string (PEFT treats a list as literal suffixes, a string
+        # as regex). Anchored on language_model to hit only the LM projections
+        # (plain nn.Linear) and exclude the vision/audio towers' Gemma4ClippableLinear
+        # wrappers, which PEFT can't target.
+        target_modules=r"language_model\..*\.(self_attn\.(q_proj|k_proj|v_proj|o_proj)|mlp\.(gate_proj|up_proj|down_proj))$",
     )
 
     # --- Dataset (messages format → chat template applied by SFTTrainer) ---
