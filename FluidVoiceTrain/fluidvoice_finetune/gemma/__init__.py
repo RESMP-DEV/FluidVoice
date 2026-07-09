@@ -23,7 +23,7 @@ def run_gemma(cfg: RunConfig, data_dir: Path | None = None,
         merged_dir = mlx_train(cfg, data_dir=data_dir, resume_adapter=resume_adapter)
     else:
         from .transformers_train import train as transformers_train
-        merged_dir = transformers_train(cfg)
+        merged_dir = transformers_train(cfg, data_dir=data_dir)
 
     from .export_gguf import export_gguf
     gguf_path = export_gguf(merged_dir, cfg)
