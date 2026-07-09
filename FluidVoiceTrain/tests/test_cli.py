@@ -72,5 +72,5 @@ def test_gemma_size_artifact_filename_matches_swift_convention():
 
 
 def test_gemma_size_base_checkpoint():
-    assert GemmaSize.E2B.base_checkpoint == "google/gemma-3n-e2b"
-    assert GemmaSize.E4B.base_checkpoint == "google/gemma-3n-e4b"
+    assert GemmaSize.E2B.base_checkpoint == "google/gemma-4-E2B"
+    assert GemmaSize.E4B.base_checkpoint == "google/gemma-4-E4B"

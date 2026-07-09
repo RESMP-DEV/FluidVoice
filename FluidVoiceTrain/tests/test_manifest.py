@@ -26,7 +26,7 @@ def test_render_gemma_card_has_required_fields(tmp_path: Path):
     gguf.write_bytes(b"\x00" * 100)
     card = render_gemma_card(gguf, GemmaSize.E4B, "altic-dev/FluidIntelligence")
     assert "fluid-1-e4b-q4_k_m.gguf" in card
-    assert "google/gemma-3n-e4b" in card
+    assert "google/gemma-4-E4B" in card
     assert "Q4_K_M" in card
     assert "modified Gemma model derivative" in card
     assert "Gemma Terms of Use apply" in card

@@ -8,11 +8,12 @@ FluidVoice auto-discovers the bundled copy at
 
 It produces the on-device artifacts FluidVoice loads at runtime:
 
-- **Gemma** — the "Fluid Intelligence" enhancement LLM (a modified Gemma-3n
-  derivative, shipped as `fluid-1-*-q4_k_m.gguf` at
+- **Gemma** — the "Fluid Intelligence" enhancement LLM (a modified **Gemma 4**
+  derivative — confirmed from the GGUF metadata, `general.architecture = "gemma4"`
+  — shipped as `fluid-1-*-q4_k_m.gguf` at
   [`altic-dev/FluidIntelligence`](https://huggingface.co/altic-dev/FluidIntelligence)).
   Supports two sizes behind the FluidVoice **E2B / E4B** toggle:
-  `google/gemma-3n-e2b` and `google/gemma-3n-e4b`.
+  `google/gemma-4-E2B` and `google/gemma-4-E4B`.
 - **Parakeet** — on-device ASR (NVIDIA NeMo CTC/TDT checkpoints re-exported to
   CoreML `.mlmodelc` bundles for the `FluidInference/*-coreml` HF org).
 

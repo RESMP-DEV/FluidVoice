@@ -33,16 +33,29 @@ from ..config import RunConfig
 
 def _write_lora_config(cfg: RunConfig, data_dir: Path, adapter_path: Path,
                        resume_adapter: Path | None) -> Path:
-    """Generate the mlx_lm.lora YAML config. Returns its path."""
+    """Generate the mlx_lm.lora YAML config. Returns its path.
+
+    Gemma 4 specifics (vs 3n):
+    - Base checkpoint is ``google/gemma-4-E2B`` / ``E4B`` (or the MLX 4-bit
+      quant at ``mlx-community/gemma-4-<size>-it-4bit`` for QLoRA).
+    - LoRA target keys target attention + MLP projections: ``q_proj``, ``k_proj``,
+      ``v_proj``, ``o_proj`` (note Gemma 4 has asymmetric global/sliding heads,
+      so k/v projections matter, not just q/v), plus ``gate_proj``/``up_proj``/
+      ``down_proj`` for the double-wide MLP. Do NOT use 3n's ``self_attn.*``
+      paths or target the (nonexistent) ``altup_*`` / ``laurel.*`` modules.
+    - ``num_layers``: Gemma 4 E4B has 35 blocks; default to applying LoRA to
+      all of them (mlx-lm converts the last ``num_layers`` blocks).
+    """
     g = cfg.gemma
+    size_token = "e2b" if g.size.value == "e2b" else "e4b"
     config: dict[str, Any] = {
         "model": g.base_checkpoint if not g.quantize_base
-        else f"mlx-community/gemma-3n-{g.size.value.upper()}-it-4bit",
+        else f"mlx-community/gemma-4-{size_token}-it-4bit",
         "train": True,
         "fine_tune_type": "lora",
         "data": str(data_dir),
         "seed": cfg.seed,
-        "num_layers": 16,  # last N transformer blocks get LoRA; tune per size
+        "num_layers": -1,  # all transformer blocks; Gemma 4 E4B has 35
         "batch_size": g.per_device_batch_size * g.grad_accum_steps,
         "iters": max(1, int(g.num_epochs * 50)),  # rough; caller can override
         "val_batches": -1,
@@ -55,7 +68,18 @@ def _write_lora_config(cfg: RunConfig, data_dir: Path, adapter_path: Path,
         "max_seq_length": g.max_seq_length,
         "mask_prompt": True,  # loss on completion (corrected text) only
         "lora_parameters": {
-            "keys": ["self_attn.q_proj", "self_attn.v_proj"],
+            # Gemma 4 module paths, RELATIVE to each transformer block (mlx-lm
+            # matches these via `k in keys` over `block.named_modules()`). Verified
+            # against mlx-community/gemma-4-e2b-it-4bit: each block has
+            # self_attn.{q_proj,o_proj} on all layers; self_attn.{k_proj,v_proj}
+            # only on the first (35 - num_kv_shared_layers) blocks (shared KV);
+            # mlp.{gate_proj,up_proj,down_proj} on all. Targeting q/o + the three
+            # MLP projections gives a balanced adapter; k/v are included for the
+            # blocks that have them.
+            "keys": [
+                "self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj",
+                "mlp.gate_proj", "mlp.up_proj", "mlp.down_proj",
+            ],
             "rank": g.lora_rank,
             "scale": float(g.lora_alpha),
             "dropout": g.lora_dropout,

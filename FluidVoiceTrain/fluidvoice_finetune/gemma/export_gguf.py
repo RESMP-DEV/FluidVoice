@@ -1,9 +1,10 @@
-"""Convert a merged HuggingFace Gemma model to the Fluid Intelligence GGUF.
+"""Convert a merged HuggingFace Gemma 4 model to the Fluid Intelligence GGUF.
 
 Pipeline (the merge happens in :mod:`mlx_train` via ``mlx_lm.fuse``):
 
   1. ``convert_hf_to_gguf.py <merged> --outfile <size>-f16.gguf --outtype bf16``
-     (llama.cpp's converter; supports ``gemma3n`` natively).
+     (llama.cpp's converter; the ``Gemma4Model`` class in ``conversion/gemma.py``
+     handles ``gemma4`` natively — no ALTUP, uses proportional RoPE).
   2. ``llama-quantize <f16>.gguf <final>.gguf Q4_K_M``.
   3. Rename to the Fluid Intelligence filename convention.
 
@@ -69,7 +70,7 @@ def export_gguf(merged_dir: Path, cfg: RunConfig) -> Path:
     convert_script = _require_convert_script()
     quantize_bin = _require_quantize_bin()
 
-    # 1. HF → unquantized GGUF (bf16). llama.cpp's converter handles gemma3n.
+    # 1. HF → unquantized GGUF (bf16). llama.cpp's Gemma4Model handles gemma4.
     subprocess.run(
         [sys_exec(), str(convert_script), str(merged_dir),
          "--outfile", str(f16_gguf), "--outtype", "bf16"],

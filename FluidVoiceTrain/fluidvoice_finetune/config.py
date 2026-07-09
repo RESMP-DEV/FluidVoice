@@ -27,10 +27,17 @@ class Target(str, Enum):
 
 
 class GemmaSize(str, Enum):
-    """Gemma-3n base-checkpoint size. Selects the HF source and the output
+    """Gemma 4 base-checkpoint size. Selects the HF source and the output
     GGUF filename consumed by the FluidVoice Swift toggle:
 
     ``fluid-1-<size>-q4_k_m.gguf`` (e.g. ``fluid-1-e4b-q4_k_m.gguf``).
+
+    Note: Fluid Intelligence (fluid-1) is a **Gemma 4** derivative, confirmed
+    from the GGUF metadata (``general.architecture = "gemma4"``). The
+    "E2B/E4B" naming also appeared in Gemma 3n, but the architectures differ —
+    Gemma 4 dropped MatFormer/ALTUP/LAUREL and uses a double-wide MLP +
+    asymmetric global/sliding attention + new ``gemma4`` tokenizer. Do not
+    treat 3n and 4 as interchangeable for fine-tuning.
     """
 
     E2B = "e2b"
@@ -39,8 +46,8 @@ class GemmaSize(str, Enum):
     @property
     def base_checkpoint(self) -> str:
         return {
-            GemmaSize.E2B: "google/gemma-3n-e2b",
-            GemmaSize.E4B: "google/gemma-3n-e4b",
+            GemmaSize.E2B: "google/gemma-4-E2B",
+            GemmaSize.E4B: "google/gemma-4-E4B",
         }[self]
 
     @property

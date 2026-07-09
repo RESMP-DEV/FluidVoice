@@ -11,10 +11,16 @@ struct PrivateAIModelArtifact: Sendable, Codable, Hashable {
 
 /// Fluid Intelligence on-device enhancement model variant.
 ///
-/// `fluid-1` is a modified Gemma derivative shipped as a Q4_K_M GGUF at
-/// `altic-dev/FluidIntelligence`. The `e2b` variant (from `google/gemma-3n-e2b`)
-/// is the current default; `e4b` (from `google/gemma-3n-e4b`) is a larger, higher
-/// quality alternative produced by the `fluidvoice-finetune` pipeline.
+/// `fluid-1` is a modified **Gemma 4** derivative (confirmed from the GGUF
+/// metadata: `general.architecture = "gemma4"`, 35 layers, 131072 context)
+/// shipped as a Q4_K_M GGUF at `altic-dev/FluidIntelligence`. The `e2b` variant
+/// (from `google/gemma-4-E2B`) is the current default; `e4b` (from
+/// `google/gemma-4-E4B`) is a larger, higher quality alternative produced by
+/// the `FluidVoiceTrain` pipeline.
+///
+/// Note: the "E2B/E4B" naming also appeared in Gemma 3n, but the architectures
+/// differ — Gemma 4 dropped MatFormer/ALTUP/LAUREL. Do not treat 3n and 4 as
+/// interchangeable for fine-tuning.
 ///
 /// The variant only selects *which* GGUF artifact the runtime loads — both are
 /// loaded by the same private `PrivateAIProviderBridge`. The artifact literals
@@ -22,11 +28,11 @@ struct PrivateAIModelArtifact: Sendable, Codable, Hashable {
 /// package; the public OSS build resolves neither. See the seam contract on
 /// `PrivateAIProviderFeatureProviding`.
 enum FluidIntelligenceModelVariant: String, CaseIterable, Identifiable, Sendable, Codable, Hashable {
-    /// Smaller / faster Gemma-3n-E2B derivative. Current default; preserves
+    /// Smaller / faster Gemma-4-E2B derivative. Current default; preserves
     /// pre-toggle behavior (`fluid-1-q4_k_m.gguf`).
     case e2b = "fluid-1-e2b"
-    /// Larger / higher-quality Gemma-3n-E4B derivative. New in this change set;
-    /// produced by the external `fluidvoice-finetune` pipeline as
+    /// Larger / higher-quality Gemma-4-E4B derivative. New in this change set;
+    /// produced by the `FluidVoiceTrain` pipeline as
     /// `models/fluid-1-e4b-q4_k_m.gguf` and uploaded to `altic-dev/FluidIntelligence`.
     case e4b = "fluid-1-e4b"
 
@@ -43,8 +49,8 @@ enum FluidIntelligenceModelVariant: String, CaseIterable, Identifiable, Sendable
     /// One-line description shown under the picker option.
     var detail: String {
         switch self {
-        case .e2b: return "Gemma-3n-E2B derivative · ~3.4 GB · Q4_K_M GGUF"
-        case .e4b: return "Gemma-3n-E4B derivative · larger · Q4_K_M GGUF"
+        case .e2b: return "Gemma-4-E2B derivative · ~3.4 GB · Q4_K_M GGUF"
+        case .e4b: return "Gemma-4-E4B derivative · larger · Q4_K_M GGUF"
         }
     }
 

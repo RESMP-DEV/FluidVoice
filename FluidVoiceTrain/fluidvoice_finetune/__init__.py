@@ -3,9 +3,10 @@
 Unified SFT/LoRA fine-tuning for the FluidVoice stack:
 
 - **Gemma** (the "Fluid Intelligence" on-device enhancement LLM, a modified
-  Gemma-3n derivative shipped as `fluid-1-*-q4_k_m.gguf` at
-  ``altic-dev/FluidIntelligence``). Supports two sizes via the ``--size`` flag:
-  ``e2b`` (``google/gemma-3n-e2b``) and ``e4b`` (``google/gemma-3n-e4b``).
+  **Gemma 4** derivative — confirmed from the GGUF metadata
+  (``general.architecture = "gemma4"``) — shipped as `fluid-1-*-q4_k_m.gguf`
+  at ``altic-dev/FluidIntelligence``). Supports two sizes via the ``--size``
+  flag: ``e2b`` (``google/gemma-4-E2B``) and ``e4b`` (``google/gemma-4-E4B``).
 - **Parakeet** (on-device ASR; NVIDIA NeMo CTC/TDT checkpoints re-exported to
   CoreML ``.mlmodelc`` bundles for the ``FluidInference/*-coreml`` repos).
 
