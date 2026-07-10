@@ -85,6 +85,20 @@ def _write_lora_config(cfg: RunConfig, data_dir: Path, adapter_path: Path,
             "dropout": g.lora_dropout,
         },
     }
+
+    # wandb experiment tracking (mlx-lm supports report_to + project_name in the
+    # YAML config). Env-gated so offline runs (WANDB_MODE=offline) and CI still
+    # work; disabled entirely if wandb isn't importable.
+    import os
+    if os.environ.get("WANDB_DISABLED", "false").lower() != "true":
+        try:
+            import wandb  # noqa: F401
+            config["report_to"] = "wandb"
+            config["project_name"] = os.environ.get(
+                "FV_WANDB_PROJECT", "fluid-intelligence"
+            )
+        except ImportError:
+            pass  # wandb not installed — skip tracking silently
     if resume_adapter and resume_adapter.exists():
         config["resume_adapter_file"] = str(resume_adapter)
 

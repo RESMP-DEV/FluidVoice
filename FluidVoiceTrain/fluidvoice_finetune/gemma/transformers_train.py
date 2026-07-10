@@ -128,6 +128,28 @@ def train(cfg: RunConfig, data_dir: Path | None = None) -> Path:
         data_files["validation"] = str(data_dir / "valid.jsonl")
     dataset = load_dataset("json", data_files=data_files)
 
+    # --- wandb experiment tracking (env-gated; offline if WANDB_MODE=offline) ---
+    import os
+    use_wandb = os.environ.get("WANDB_DISABLED", "false").lower() != "true"
+    if use_wandb:
+        try:
+            import wandb
+            wandb.init(
+                project=os.environ.get("FV_WANDB_PROJECT", "fluid-intelligence"),
+                name=os.environ.get("FV_WANDB_RUN", f"gemma4-{g.size.value}-cuda-qlora"),
+                tags=["gemma4", g.size.value, "cuda", "qlora", "fluid-1"],
+                config={
+                    "base_model": base, "size": g.size.value, "target": "cuda",
+                    "lora_rank": g.lora_rank, "lora_alpha": g.lora_alpha,
+                    "lora_dropout": g.lora_dropout, "learning_rate": g.learning_rate,
+                    "num_epochs": g.num_epochs, "batch_size": g.per_device_batch_size,
+                    "grad_accum": g.grad_accum_steps, "max_seq_length": g.max_seq_length,
+                    "quantize_base": g.quantize_base,
+                },
+            )
+        except Exception:
+            use_wandb = False  # wandb not installed/auth'd — fall back to no tracking
+
     # --- Training config ---
     sft_config = SFTConfig(
         output_dir=str(g.output_dir / "trl-out"),
@@ -147,7 +169,7 @@ def train(cfg: RunConfig, data_dir: Path | None = None) -> Path:
         max_length=g.max_seq_length,
         packing=False,  # keep examples separate for clean loss attribution
         dataset_kwargs={"skip_prepare_dataset": False},
-        report_to="none",
+        report_to="wandb" if use_wandb else "none",
     )
 
     trainer = SFTTrainer(
@@ -160,6 +182,13 @@ def train(cfg: RunConfig, data_dir: Path | None = None) -> Path:
     )
 
     trainer.train()
+
+    if use_wandb:
+        try:
+            import wandb
+            wandb.finish()
+        except Exception:
+            pass
 
     # --- Merge LoRA into base → save HF folder for GGUF export ---
     merged_model = trainer.model.merge_and_unload()
